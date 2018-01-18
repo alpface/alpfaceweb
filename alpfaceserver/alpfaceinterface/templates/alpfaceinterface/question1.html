@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form method="post" action="/alpfaceinterface/answer/">
+    {% csrf_token %}
+    问题: <input type="text" name="question_text"><br>
+    答案选项: <input type="checkbox" name="answeroptions" value="libai">libai
+    <input type="checkbox" name="answeroptions" value="baijuyi">libai
+    <input type="checkbox" name="answeroptions" value="qianlong">libai
+    <br>
+    <input type="submit" value="提交">
+</form>
+
+</body>
+</html>
