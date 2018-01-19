@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-# @Time    : 1/18/18 6:40 AM
+# @Time    : 1/19/18 6:28 AM
 # @Author  : alpface
 # @Email   : xiaoyuan1314@me.com
-# @File    : main.py
+# @File    : search.py
 # @Software: PyCharm
+
 
 import multiprocessing
 import os
@@ -24,15 +25,16 @@ jieba_initialize()
 # 包含题目和答案选项
 get_wd = '题目'
 
-def parse_args():
-    parser = ArgumentParser(description="Million Hero Assistant")
-    parser.add_argument(
-        "-t", "--timeout",
-        type=int,
-        default=5,
-        help="default http request timeout"
-    )
-    return parser.parse_args()
+
+# def parse_args():
+#     parser = ArgumentParser(description="Million Hero Assistant")
+#     parser.add_argument(
+#         "-t", "--timeout",
+#         type=int,
+#         default=5,
+#         help="default http request timeout"
+#     )
+#     return parser.parse_args()
 
 
 def parse_question_and_answer(text_list):
@@ -71,10 +73,11 @@ def pre_process_question(keyword):
     return keyword
 
 
-#def main():
+# def main():
 def search(wd):
-    args = parse_args()
-    timeout = args.timeout
+    multiprocessing.freeze_support()
+    # args = parse_args()
+    timeout = 5#args.timeout
 
     stdout_queue = Queue(10)
     ## spaw baidu count
@@ -91,11 +94,11 @@ def search(wd):
     knowledge_craw_job.daemon = True
     knowledge_craw_job.start()
 
-
-    # 获取题目
-    def __inner_job():
+    # 获取题目, 这是一个内层函数
+    def __inner_job(keywords):
         start = time.time()
-        keywords = get_wd
+        if not keywords:
+            keywords = get_wd  # 测试
         if not keywords:
             print("text not recognize")
             return
@@ -117,14 +120,13 @@ def search(wd):
         ))
         knowledge_queue.put(question)
 
-
         end = time.time()
         stdout_queue.put({
             "type": 3,
             "data": "use {0} 秒".format(end - start)
         })
 
-        time.time(1)
+        time.time()
 
     # print("""
     #     请选择答题节目:
@@ -133,7 +135,7 @@ def search(wd):
     #       3. 芝士超人
     #       4. UC答题
     #     """)
-    game_type = 1 #input("输入节目序号: ")
+    game_type = '1'  # input("输入节目序号: ")
     if game_type == "1":
         game_type = '百万英雄'
     elif game_type == "2":
@@ -145,23 +147,27 @@ def search(wd):
     else:
         game_type = '百万英雄'
 
-    while True:
-        # enter = input("按Enter键开始，按ESC键退出...")
-        # if enter == chr(27):
-        #     break
-        try:
-            #clear_screen()
-            __inner_job()
-        except Exception as e:
-            import traceback
+    try:
+        # 执行内层函数
+        __inner_job(wd)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(str(e))
 
-            traceback.print_exc()
-            print(str(e))
-
-
+    # while True:
+    #     # enter = input("按Enter键开始，按ESC键退出...")
+    #     # if enter == chr(27):
+    #     #     break
+    #     try:
+    #         #clear_screen()
+    #         __inner_job()
+    #     except Exception as e:
+    #         import traceback
+    #
+    #         traceback.print_exc()
+    #         print(str(e))
 
 # if __name__ == "__main__":
 #     multiprocessing.freeze_support()
 #     main
-
-
