@@ -14,10 +14,10 @@ from datetime import datetime
 from functools import partial
 from multiprocessing import Queue, Event, Pipe
 
-from alpfaceserver.alpfaceinterface.core.check_words import parse_false
-from alpfaceserver.alpfaceinterface.core.chrome_search import run_browser
-from alpfaceserver.alpfaceinterface.core.crawler.baiduzhidao import baidu_count_daemon
-from alpfaceserver.alpfaceinterface.core.crawler.crawl import jieba_initialize, crawler_daemon
+from alpfaceinterface.core.check_words import parse_false
+from alpfaceinterface.core.chrome_search import run_browser
+from alpfaceinterface.core.crawler.baiduzhidao import baidu_count_daemon
+from alpfaceinterface.core.crawler.crawl import jieba_initialize, crawler_daemon
 
 jieba_initialize()
 

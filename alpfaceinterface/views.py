@@ -1,7 +1,7 @@
 from django.shortcuts import render
 import json
 from django.http import HttpResponse
-from alpfaceserver.alpfaceinterface.main import search
+from alpfaceinterface.main import search
 
 
 # Create your views here.

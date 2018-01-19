@@ -11,6 +11,8 @@ import operator
 import platform
 from textwrap import wrap
 from urllib.parse import quote
+import os
+from alpfaceserver.settings import BASE_DIR
 
 import jieba
 
@@ -21,7 +23,8 @@ from alpfaceinterface.core.crawler import text_process as T
 def jieba_initialize():
     if not platform.system().upper().startswith("WINDOWS"):
         jieba.enable_parallel(multiprocessing.cpu_count())
-    jieba.load_userdict('resources/QAattrdic.txt')
+
+    jieba.load_userdict(os.path.join(BASE_DIR, 'alpfaceinterface/resources/QAattrdic.txt'))
     jieba.initialize()
 
 
