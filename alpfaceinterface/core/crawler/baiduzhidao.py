@@ -79,6 +79,7 @@ def baidu_count_daemon(exchage_queue, outputqueue, timeout=3):
         return answer if not final_none else " ".join(final_none)
 
     while True:
+        flag = exchage_queue.empty()
         question, answers, true_flag = exchage_queue.get()
         try:
             answers = map(just_keep_none, answers)

@@ -72,28 +72,43 @@ def pre_process_question(keyword):
     keyword = "".join([e.strip("\r\n") for e in keywords if e])
     return keyword
 
+stdout_queue = Queue(10)
+## spaw baidu count
+baidu_queue = Queue(5)
+## spaw crawler
+knowledge_queue = Queue(5)
+multiprocessing.freeze_support()
+timeout = 50#args.timeout
 
-# def main():
-def search(wd):
-    multiprocessing.freeze_support()
-    # args = parse_args()
-    timeout = 5#args.timeout
 
-    stdout_queue = Queue(10)
-    ## spaw baidu count
-    baidu_queue = Queue(5)
+def main():
+
     baidu_search_job = multiprocessing.Process(target=baidu_count_daemon,
                                                args=(baidu_queue, stdout_queue, timeout))
     baidu_search_job.daemon = True
     baidu_search_job.start()
 
-    ## spaw crawler
-    knowledge_queue = Queue(5)
+
     knowledge_craw_job = multiprocessing.Process(target=crawler_daemon,
                                                  args=(knowledge_queue, stdout_queue))
     knowledge_craw_job.daemon = True
     knowledge_craw_job.start()
 
+
+    # while True:
+    #     # enter = input("按Enter键开始，按ESC键退出...")
+    #     # if enter == chr(27):
+    #     #     break
+    #     try:
+    #         #clear_screen()
+    #         __inner_job()
+    #     except Exception as e:
+    #         import traceback
+    #
+    #         traceback.print_exc()
+    #         print(str(e))
+
+def search(wd='', game_type='1'):
     # 获取题目, 这是一个内层函数
     def __inner_job(keywords):
         start = time.time()
@@ -125,17 +140,9 @@ def search(wd):
             "type": 3,
             "data": "use {0} 秒".format(end - start)
         })
-
+        main()
         time.time()
 
-    # print("""
-    #     请选择答题节目:
-    #       1. 百万英雄
-    #       2. 冲顶大会
-    #       3. 芝士超人
-    #       4. UC答题
-    #     """)
-    game_type = '1'  # input("输入节目序号: ")
     if game_type == "1":
         game_type = '百万英雄'
     elif game_type == "2":
@@ -146,8 +153,8 @@ def search(wd):
         game_type = "UC答题"
     else:
         game_type = '百万英雄'
-
     try:
+
         # 执行内层函数
         __inner_job(wd)
     except Exception as e:
@@ -155,19 +162,3 @@ def search(wd):
         traceback.print_exc()
         print(str(e))
 
-    # while True:
-    #     # enter = input("按Enter键开始，按ESC键退出...")
-    #     # if enter == chr(27):
-    #     #     break
-    #     try:
-    #         #clear_screen()
-    #         __inner_job()
-    #     except Exception as e:
-    #         import traceback
-    #
-    #         traceback.print_exc()
-    #         print(str(e))
-
-# if __name__ == "__main__":
-#     multiprocessing.freeze_support()
-#     main

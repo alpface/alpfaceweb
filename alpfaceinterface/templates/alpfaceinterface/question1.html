@@ -7,10 +7,10 @@
 <body>
 <form method="post" action="/alpfaceinterface/answer/">
     {% csrf_token %}
-    问题: <input type="text" name="question_text"><br>
-    答案选项: <input type="checkbox" name="answeroptions" value="libai">libai
-    <input type="checkbox" name="answeroptions" value="baijuyi">libai
-    <input type="checkbox" name="answeroptions" value="qianlong">libai
+    问题: <input type="text" name="question_text", value="以下哪位是中国最著名的诗人?"><br>
+    答案选项: <input type="checkbox" name="answeroptions" value="李白">李白
+    <input type="checkbox" name="answeroptions" value="白居易">白居易
+    <input type="checkbox" name="answeroptions" value="杜甫">杜甫
     <br>
     <input type="submit" value="提交">
 </form>
