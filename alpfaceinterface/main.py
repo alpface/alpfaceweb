@@ -22,16 +22,19 @@ def main(ques):
     if question is None or question == '':
         print('未获取到问题')
         return '未获取到问题', -1
-    best_answer, best_index = search(question, option_arr, is_negative)  # 搜索结果
+    searchresult = search(question, option_arr, is_negative)  # 搜索结果
+    best_answer = searchresult['best_answer']
+    best_index = searchresult['best_index']
 
-    if best_answer is None:
+    if best_index == -1:
         print('\n没有答案')
-        best_index = -1
     else:
         print('推荐答案是： \033[1;31m{}\033[0m'.format(best_answer))
     run_time = (datetime.now() - start).seconds
+    searchresult['run_time'] = run_time
     print('本次运行时间为：{}秒'.format(run_time))
-    return best_answer, best_index
+    #return best_answer, best_index
+    return searchresult
 
 
 

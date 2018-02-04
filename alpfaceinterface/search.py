@@ -15,17 +15,30 @@ default_max_wait_time = 3  # 默认最大等待时间3秒
 
 option_split_word = ['的', '之', '、', '和']
 
+
 def search(question, option_arr, is_negative):
+    currentSearch = {}
     wd = urllib.request.quote(question)
     pool = Pool()
     source_1 = pool.apply_async(search_baidu, args=(wd, option_arr))
     source_2 = pool.apply_async(search_zhidao, args=(wd, option_arr))
     pool.close()
     # pool.join()
-    source_arr = get_source(source_1, source_2)
+    source_arr, baidu_url, baiduzhidao_url = get_source(source_1, source_2)
     print('分数统计是：{}'.format(source_arr))
     best_answer, best_index = get_result(source_arr, option_arr, is_negative)
-    return best_answer, best_index
+    currentSearch['baidu_url'] = baidu_url
+    currentSearch['baiduzhidao_url'] = baiduzhidao_url
+    if best_answer is not None or best_answer != '':
+        currentSearch['best_answer'] = best_answer
+        currentSearch['best_index'] = best_index
+        currentSearch['best_answer_index'] = option_arr.index(best_answer)
+    else:
+        currentSearch['best_answer'] = ''
+        currentSearch['best_index'] = 0
+        option_arr['best_answer_index'] = -1
+    return currentSearch
+    #return best_answer, best_index
 
 
 # 百度搜索
@@ -42,7 +55,7 @@ def search_baidu(question, option_arr):
     body = BeautifulSoup(result.read(), 'html5lib')
     content_list = body.find('div', id='content_left')
     if content_list is None:
-        return [0, 0, 0]
+        return [0, 0, 0], url
     content_list = content_list.findAll('div')
     # print(content_list)
     for content in content_list:
@@ -60,7 +73,7 @@ def search_baidu(question, option_arr):
             op = option_arr[j]
             if op in result:  # 选项在答案中出现一次，加10分
                 source_arr[j] += 5
-    return source_arr
+    return source_arr, url
 
 
 # 百度知道搜题
@@ -104,7 +117,7 @@ def search_zhidao(question, option_arr):
                 source_arr[j] += 10
                 if re.search('[答案|结果|而是].{4}' + op, result) is not None:
                     source_arr[j] += 20
-    return source_arr
+    return source_arr, url
 
 
 def get_result(source_arr, option_arr, is_negate):
@@ -122,20 +135,21 @@ def get_result(source_arr, option_arr, is_negate):
 
 def get_source(source_1, source_2):
     s1, s2 = [], []
+    url1, url2 = '', ''
     try:
-        s1 = source_1.get(default_max_wait_time)
+        s1, url1 = source_1.get(default_max_wait_time)
     except BaseException as ex:
         print(ex)
         s1 = [0, 0, 0]
     try:
-        s2 = source_2.get(default_max_wait_time)
+        s2, url2 = source_2.get(default_max_wait_time)
     except BaseException as ex:
         print(ex)
         s2 = [0, 0, 0]
     print('百度网页搜索结果:{}'.format(s1))
     print('百度知道结果：{}.'.format(s2))
     source_arr = over_add(s1, s2)
-    return source_arr
+    return source_arr, url1, url2
 
 
 def over_add(arr1, arr2):
