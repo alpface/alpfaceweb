@@ -5,160 +5,155 @@
 # @File    : search.py
 # @Software: PyCharm
 
+import re
+import urllib.request
+from multiprocessing import Pool
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
 
-import multiprocessing
-import os
-import threading
-import time
-from argparse import ArgumentParser
-from datetime import datetime
-from functools import partial
-from multiprocessing import Queue, Event, Pipe
+default_max_wait_time = 3  # 默认最大等待时间3秒
 
-from alpfaceinterface.core.check_words import parse_false
-from alpfaceinterface.core.chrome_search import run_browser
-from alpfaceinterface.core.crawler.baiduzhidao import baidu_count_daemon
-from alpfaceinterface.core.crawler.crawl import jieba_initialize, crawler_daemon
+option_split_word = ['的', '之', '、', '和']
 
-jieba_initialize()
-
-# 包含题目和答案选项
-get_wd = '题目'
-
-
-# def parse_args():
-#     parser = ArgumentParser(description="Million Hero Assistant")
-#     parser.add_argument(
-#         "-t", "--timeout",
-#         type=int,
-#         default=5,
-#         help="default http request timeout"
-#     )
-#     return parser.parse_args()
+def search(question, option_arr, is_negative):
+    wd = urllib.request.quote(question)
+    pool = Pool()
+    source_1 = pool.apply_async(search_baidu, args=(wd, option_arr))
+    source_2 = pool.apply_async(search_zhidao, args=(wd, option_arr))
+    pool.close()
+    # pool.join()
+    source_arr = get_source(source_1, source_2)
+    print('分数统计是：{}'.format(source_arr))
+    best_answer = get_result(source_arr, option_arr, is_negative)
+    return best_answer
 
 
-def parse_question_and_answer(text_list):
-    question = ""
-    start = 0
-    for i, keyword in enumerate(text_list):
-        question += keyword
-        if "?" in keyword:
-            start = i + 1
-            break
-    real_question = question.split(".")[-1]
-
-    for char, repl in [("以下", ""), ("下列", "")]:
-        real_question = real_question.replace(char, repl, 1)
-
-    question, true_flag = parse_false(real_question)
-    return true_flag, real_question, question, text_list[start:]
-
-
-def pre_process_question(keyword):
-    """
-    strip charactor and strip ?
-    :param question:
-    :return:
-    """
-    now = datetime.today()
-    for char, repl in [("“", ""), ("”", ""), ("？", ""), ("《", ""), ("》", ""), ("我国", "中国"),
-                       ("今天", "{0}年{1}月{2}日".format(now.year, now.month, now.day)),
-                       ("今年", "{0}年".format(now.year)),
-                       ("这个月", "{0}年{1}月".format(now.year, now.month))]:
-        keyword = keyword.replace(char, repl)
-
-    keyword = keyword.split(r"．")[-1]
-    keywords = keyword.split(" ")
-    keyword = "".join([e.strip("\r\n") for e in keywords if e])
-    return keyword
-
-stdout_queue = Queue(10)
-## spaw baidu count
-baidu_queue = Queue(5)
-## spaw crawler
-knowledge_queue = Queue(5)
-multiprocessing.freeze_support()
-timeout = 50#args.timeout
+# 百度搜索
+def search_baidu(question, option_arr):
+    result_list = []
+    user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2)\
+     AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'
+    head = {}
+    head['User-Agent'] = user_agent
+    url = 'https://www.baidu.com/s?wd={}'.format(question)
+    print(url)
+    request = urllib.request.Request(url, headers=head)
+    result = urlopen(request)
+    body = BeautifulSoup(result.read(), 'html5lib')
+    content_list = body.find('div', id='content_left')
+    if content_list is None:
+        return [0, 0, 0]
+    content_list = content_list.findAll('div')
+    # print(content_list)
+    for content in content_list:
+        content_text = content.get_text()
+        content_text = re.sub('\s', '', content_text)
+        result_list.append(content_text)
+    answer_num = len(result_list)
+    source_arr = []
+    op_num = len(option_arr)
+    for i in range(0, op_num):
+        source_arr.append(0)
+    for i in range(0, answer_num):
+        result = result_list[i]
+        for j in range(0, op_num):
+            op = option_arr[j]
+            if op in result:  # 选项在答案中出现一次，加10分
+                source_arr[j] += 5
+    return source_arr
 
 
-def main():
+# 百度知道搜题
+def search_zhidao(question, option_arr):
+    result_list = []
+    url = 'https://zhidao.baidu.com/search?word={}'.format(
+        question)
+    print(url)
+    result = urlopen(url)
+    # 解析页面
+    body = BeautifulSoup(result.read(), 'html5lib')
+    good_result_div = body.find(class_='list-header').find('dd')
+    second_result_div = body.find(class_='list-inner').find(class_='list')
+    if good_result_div is not None:
+        good_result = good_result_div.get_text()
+        result_list.append(good_result)
 
-    baidu_search_job = multiprocessing.Process(target=baidu_count_daemon,
-                                               args=(baidu_queue, stdout_queue, timeout))
-    baidu_search_job.daemon = True
-    baidu_search_job.start()
+    if second_result_div is not None:
+        second_result_10 = second_result_div.findAll('dl')  # .find(class_='answer').get_text()
+        if second_result_10 is not None and len(second_result_10) > 0:
+            for each_result in second_result_10:
+                result_dd = each_result.get_text()
+                result_text = re.sub('\s', '', result_dd)
+                result_list.append(result_text)
+                print(result_text)
+    answer_num = len(result_list)
+    source_arr = []
+    op_num = len(option_arr)
+    for i in range(0, op_num):
+        source_arr.append(0)
+    for i in range(0, answer_num):
+        result = result_list[i]
+        for j in range(0, op_num):
+            op = option_arr[j]
+            op_arr = split_option(op)  # 对选项进行简单分词搜索，如
+            if op_arr is not None:
+                for op_wd in op_arr:
+                    if op_wd in result:
+                        source_arr[j] += 5
+            if op in result:  # 选项在答案中出现一次，加10分
+                source_arr[j] += 10
+                if re.search('[答案|结果|而是].{4}' + op, result) is not None:
+                    source_arr[j] += 20
+    return source_arr
 
 
-    knowledge_craw_job = multiprocessing.Process(target=crawler_daemon,
-                                                 args=(knowledge_queue, stdout_queue))
-    knowledge_craw_job.daemon = True
-    knowledge_craw_job.start()
-
-
-    # while True:
-    #     # enter = input("按Enter键开始，按ESC键退出...")
-    #     # if enter == chr(27):
-    #     #     break
-    #     try:
-    #         #clear_screen()
-    #         __inner_job()
-    #     except Exception as e:
-    #         import traceback
-    #
-    #         traceback.print_exc()
-    #         print(str(e))
-
-def search(wd='', game_type='1'):
-    # 获取题目, 这是一个内层函数
-    def __inner_job(keywords):
-        start = time.time()
-        if not keywords:
-            keywords = get_wd  # 测试
-        if not keywords:
-            print("text not recognize")
-            return
-
-        true_flag, real_question, question, answers = parse_question_and_answer(keywords)
-
-        if game_type == "UC答题":
-            answers = map(lambda a: a.rsplit(":")[-1], answers)
-
-        ### refresh question
-        stdout_queue.put({
-            "type": 0,
-            "data": "{0}\n{1}".format(question, "\n".join(answers))
-        })
-
-        # notice baidu and craw
-        baidu_queue.put((
-            question, answers, true_flag
-        ))
-        knowledge_queue.put(question)
-
-        end = time.time()
-        stdout_queue.put({
-            "type": 3,
-            "data": "use {0} 秒".format(end - start)
-        })
-        main()
-        time.time()
-
-    if game_type == "1":
-        game_type = '百万英雄'
-    elif game_type == "2":
-        game_type = '冲顶大会'
-    elif game_type == "3":
-        game_type = "芝士超人"
-    elif game_type == "4":
-        game_type = "UC答题"
+def get_result(source_arr, option_arr, is_negate):
+    if len(source_arr) == 0 or max(source_arr) == 0:
+        return None
+    if is_negate:
+        best_index = min(source_arr)
     else:
-        game_type = '百万英雄'
+        best_index = max(source_arr)
+    best_result = option_arr[source_arr.index(best_index)]
+    for num in source_arr:
+        print(num)
+    return best_result
+
+
+def get_source(source_1, source_2):
+    s1, s2 = [], []
     try:
+        s1 = source_1.get(default_max_wait_time)
+    except BaseException as ex:
+        print(ex)
+        s1 = [0, 0, 0]
+    try:
+        s2 = source_2.get(default_max_wait_time)
+    except BaseException as ex:
+        print(ex)
+        s2 = [0, 0, 0]
+    print('百度网页搜索结果:{}'.format(s1))
+    print('百度知道结果：{}.'.format(s2))
+    source_arr = over_add(s1, s2)
+    return source_arr
 
-        # 执行内层函数
-        __inner_job(wd)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(str(e))
 
+def over_add(arr1, arr2):
+    length = min(len(arr1), len(arr2))
+    arr = []
+    for i in range(0, length):
+        arr.append(0)
+    for i in range(length):
+        arr[i] = arr1[i] + arr2[i]
+    return arr
+
+def split_option(option):
+    option_arr = []
+    for wd in option_split_word:
+        option_arr = option.split(wd)
+        if len(option_arr) > 1:
+            break
+    if len(option_arr) > 1:
+        return option_arr
+    else:
+        return None
