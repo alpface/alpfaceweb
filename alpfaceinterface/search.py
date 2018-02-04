@@ -24,8 +24,8 @@ def search(question, option_arr, is_negative):
     # pool.join()
     source_arr = get_source(source_1, source_2)
     print('分数统计是：{}'.format(source_arr))
-    best_answer = get_result(source_arr, option_arr, is_negative)
-    return best_answer
+    best_answer, best_index = get_result(source_arr, option_arr, is_negative)
+    return best_answer, best_index
 
 
 # 百度搜索
@@ -117,7 +117,7 @@ def get_result(source_arr, option_arr, is_negate):
     best_result = option_arr[source_arr.index(best_index)]
     for num in source_arr:
         print(num)
-    return best_result
+    return best_result, best_index
 
 
 def get_source(source_1, source_2):

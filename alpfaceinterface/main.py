@@ -15,26 +15,29 @@ auxiliary_word = ['下列', '以下', '哪个', '?']
 def main(ques):
     start = datetime.now()  # 记录开始时间
     if ques is None:
-        ques = '"世界上使用人数最多语言是?\n\n英语\n\n汉语\n\n法语"'
+        ques = '"孟姜女是哪个朝代的人?\n\n唐代\n\n秦朝\n\n宋代"'
     question, option_arr, is_negative = parse_question(ques)
     print('搜索的题目是：{} '.format(question))
     print('选项为：{} '.format(option_arr))
     if question is None or question == '':
-        print('没有识别题目')
-        return
-    result_list = search(question, option_arr, is_negative)  # 搜索结果
+        print('未获取到问题')
+        return '未获取到问题', -1
+    best_answer, best_index = search(question, option_arr, is_negative)  # 搜索结果
 
-    if result_list is None:
+    if best_answer is None:
         print('\n没有答案')
+        best_index = -1
     else:
-        print('最佳答案是： \033[1;31m{}\033[0m'.format(result_list))
+        print('推荐答案是： \033[1;31m{}\033[0m'.format(best_answer))
     run_time = (datetime.now() - start).seconds
     print('本次运行时间为：{}秒'.format(run_time))
+    return best_answer, best_index
 
 
 
 
 def parse_question(text):
+    '''解析问题和答案选项字符串'''
     question, option_arr = get_question(text)
     question, is_negative = analyze_question(question)
     return question, option_arr, is_negative
