@@ -9,11 +9,26 @@ import re
 import urllib.request
 from multiprocessing import Pool
 from urllib.request import urlopen
+import random
+import os
+
 from bs4 import BeautifulSoup
 
 default_max_wait_time = 3  # 默认最大等待时间3秒
 
 option_split_word = ['的', '之', '、', '和']
+
+# Default user agent, unless instructed by the user to change it.
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6'
+
+# Load the list of valid user agents from the install folder.
+install_folder = os.path.abspath(os.path.split(__file__)[0])
+user_agents_file = os.path.join(install_folder, 'user_agents.txt')
+try:
+    with open(user_agents_file) as fp:
+        user_agents_list = [_.strip() for _ in fp.readlines()]
+except Exception:
+    user_agents_list = [USER_AGENT]
 
 
 def search(question, option_arr, is_negative):
@@ -39,6 +54,29 @@ def search(question, option_arr, is_negative):
         option_arr['best_answer_index'] = -1
     return currentSearch
     #return best_answer, best_index
+
+def google_search(question, option_arr, is_negative):
+    currentSearch = {}
+    wd = urllib.request.quote(question)
+    pool = Pool()
+    source = pool.apply_async(search_google, args=(wd, option_arr))
+    pool.close()
+    # pool.join()
+
+    source_arr, google_url = get_google_source(source)
+    print('分数统计是：{}'.format(source_arr))
+    best_answer, best_index = get_result(source_arr, option_arr, is_negative)
+    currentSearch['google_url'] = google_url
+    if best_answer is not None or best_answer != '':
+        currentSearch['best_answer'] = best_answer
+        currentSearch['best_index'] = best_index
+        currentSearch['best_answer_index'] = option_arr.index(best_answer)
+    else:
+        currentSearch['best_answer'] = ''
+        currentSearch['best_index'] = 0
+        option_arr['best_answer_index'] = -1
+    return currentSearch
+
 
 
 # 百度搜索
@@ -75,6 +113,44 @@ def search_baidu(question, option_arr):
                 source_arr[j] += 5
     return source_arr, url
 
+# Google 搜索
+def search_google(question, option_arr):
+    result_list = []
+    header = {}
+    header['User-Agent'] = USER_AGENT
+    # url = "https://www.google.co.jp/search?source=hp&q={question}".format(
+    #     question=question,
+    # )
+
+    url = "https://{domain}/search?hl={language}&q={query}&btnG=Search&gbv=1".format(
+        domain = "www.google.co.jp", language='en', query=question
+    )
+    print(url)
+    request = urllib.request.Request(url=url, headers=header)
+    result = urlopen(request)
+    soup = BeautifulSoup(result.read(), 'html5lib')
+    content_list = soup.find(id='search')
+    if content_list is None:
+        return [0, 0, 0], url
+    content_list = content_list.findAll('div')
+    if content_list is None:
+        return [0, 0, 0], url
+    for content in content_list:
+        content_text = content.get_text()
+        content_text = re.sub("\s", '', content_text)
+        result_list.append(content_text)
+    answer_num = len(result_list)
+    source_arr = []
+    op_num = len(option_arr)
+    for v in range(0, op_num):
+        source_arr.append(0)
+    for i in range(0, answer_num):
+        res = result_list[i]
+        for j in range(0, op_num):
+            op = option_arr[j]
+            if op in res:
+                source_arr[j] += 5
+    return source_arr, url
 
 # 百度知道搜题
 def search_zhidao(question, option_arr):
@@ -151,6 +227,17 @@ def get_source(source_1, source_2):
     source_arr = over_add(s1, s2)
     return source_arr, url1, url2
 
+def get_google_source(source):
+    s1 = []
+    url1 = ''
+    try:
+        s1, url1 = source.get(default_max_wait_time)
+    except BaseException as ex:
+        print(ex)
+        s1 = [0, 0, 0]
+    print('Google搜索结果:{}'.format(s1))
+    return s1, url1
+
 
 def over_add(arr1, arr2):
     length = min(len(arr1), len(arr2))
@@ -171,3 +258,14 @@ def split_option(option):
         return option_arr
     else:
         return None
+
+
+# Get a random user agent.
+def get_random_user_agent():
+    """
+    Get a random user agent string.
+
+    @rtype:  str
+    @return: Random user agent string.
+    """
+    return random.choice(user_agents_list)

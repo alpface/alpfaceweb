@@ -23,6 +23,9 @@ def answer_options(request):
         op2=answeroption2,
         op3=answeroption3
     ))
+
+
+
     print(searchresult)
     # resp = {'errorCode': 100, 'detail': 'Get success', 'question': question, 'answeroptions': answeroptions}
     #resp = {}

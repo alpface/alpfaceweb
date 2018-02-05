@@ -6,8 +6,7 @@
 # @Software: PyCharm
 
 from datetime import datetime
-from alpfaceinterface.search import search
-
+from alpfaceinterface.search import search, google_search
 
 negate_word = ['没有', '不是', '不会', '不包括', '不属于', '无关', '不可能', '错误']
 auxiliary_word = ['下列', '以下', '哪个', '?']
@@ -22,7 +21,7 @@ def main(ques):
     if question is None or question == '':
         print('未获取到问题')
         return '未获取到问题', -1
-    searchresult = search(question, option_arr, is_negative)  # 搜索结果
+    searchresult = google_search(question, option_arr, is_negative)  # 搜索结果
     best_answer = searchresult['best_answer']
     best_index = searchresult['best_index']
 
